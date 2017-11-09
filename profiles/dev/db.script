@@ -1,0 +1,15 @@
+insert into USER values('sunil',1,'sunil','sunil',123123);
+insert into USER values('john',1,'john','john',123123);
+
+insert into ROLE(NAME) values('admin');
+insert into ROLE(NAME) values('developer');
+
+
+insert into USER_ROLE values('sunil',1);
+insert into USER_ROLE values('john',2);
+
+
+insert into Project values(1,'pro1','pro1','sunil');
+insert into Project values(1,'pro2','pro2','sunil');
+insert into Project values(3,'pro3','pro3','john');
+insert into Project values(4,'pro4','pro4','john');

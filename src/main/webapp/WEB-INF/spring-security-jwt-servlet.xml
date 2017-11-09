@@ -1,0 +1,91 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                    http://www.springframework.org/schema/beans/spring-beans.xsd
+                    http://www.springframework.org/schema/security
+                    http://www.springframework.org/schema/security/spring-security.xsd">
+
+    <import resource="spring-persistent-servlet.xml"/>
+
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider ref="ajaxAuthenticationProvider"/>
+        <security:authentication-provider ref="jwtAuthenticationProvider"/>
+    </security:authentication-manager>
+
+    <bean id="ajaxAuthenticationProvider" class="com.geeksoverflow.security.jwt.provider.AjaxAuthenticationProvider">
+    </bean>
+
+    <bean id="jwtAuthenticationProvider" class="com.geeksoverflow.security.jwt.provider.JwtAuthenticationProvider">
+    </bean>
+
+    <bean id="bCryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder">
+        <constructor-arg value="5"></constructor-arg>
+    </bean>
+
+    <security:http pattern="/services/login" security="none"/>
+    <security:http pattern="/services/accessdenied" security="none"/>
+
+    <security:http use-expressions="true" entry-point-ref="appAuthenticationEntryPoint">
+        <security:intercept-url pattern="/" access="isAuthenticated()"/>
+
+        <security:custom-filter before="PRE_AUTH_FILTER" ref="jwtTokenAuthenticationProcessingFilter"/>
+        <security:custom-filter before="FORM_LOGIN_FILTER" ref="ajaxLoginProcessingFilter"/>
+
+    </security:http>
+
+    <bean id="appAuthenticationEntryPoint"
+          class="com.geeksoverflow.security.jwt.entrypoint.AppAuthenticationEntryPoint">
+        <constructor-arg name="loginFormUrl" value="/services/login"/>
+    </bean>
+
+    <bean id="jwtTokenAuthenticationProcessingFilter" class="com.geeksoverflow.security.jwt.filter.JwtTokenAuthenticationProcessingFilter">
+        <constructor-arg index="0" ref="ajaxAwareAuthenticationFailureHandler"/>
+        <constructor-arg index="1" ref="tokenExtractor"/>
+        <constructor-arg index="2" ref="skipPathRequestMatcher"/>
+        <property name="authenticationManager" ref="authenticationManager" />
+    </bean>
+
+    <bean id="skipPathRequestMatcher" class="com.geeksoverflow.security.jwt.provider.SkipPathRequestMatcher">
+        <constructor-arg index="0">
+            <list>
+                <value>/</value>
+                <value>/services/auth</value>
+                <value>/services/login</value>
+                <value>/services/token</value>
+            </list>
+        </constructor-arg>
+        <constructor-arg index="1" value="/services/**"></constructor-arg>
+    </bean>
+
+    <bean id="tokenExtractor" class="com.geeksoverflow.security.jwt.token.JwtHeaderTokenExtractor"/>
+
+    <bean id="ajaxLoginProcessingFilter" class="com.geeksoverflow.security.jwt.filter.AjaxLoginProcessingFilter">
+        <constructor-arg index="0" value="/services/auth"/>
+        <constructor-arg index="1" ref="ajaxAwareAuthenticationSuccessHandler"/>
+        <constructor-arg index="2" ref="ajaxAwareAuthenticationFailureHandler"/>
+        <constructor-arg index="3" ref="objectMapper"/>
+        <property name="authenticationManager" ref="authenticationManager" />
+    </bean>
+
+    <bean id="ajaxAwareAuthenticationSuccessHandler" class="com.geeksoverflow.security.jwt.handler.AjaxAwareAuthenticationSuccessHandler"/>
+
+    <bean id="ajaxAwareAuthenticationFailureHandler" class="com.geeksoverflow.security.jwt.handler.AjaxAwareAuthenticationFailureHandler"/>
+
+<!--    <bean id="ajaxAwareAuthenticationFailureHandler"
+          class="org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler">
+        <constructor-arg name="defaultFailureUrl" value="/services/accessdenied"/>
+    </bean>-->
+
+    <bean id="jwtTokenFactory" class="com.geeksoverflow.security.jwt.factory.JwtTokenFactory"/>
+
+    <bean id="jwtSettings" class="com.geeksoverflow.security.jwt.factory.JwtSettings">
+       <property name="tokenExpirationTime" value="${tokenExpirationTime}"/>
+        <property name="tokenIssuer" value="${tokenIssuer}"/>
+        <property name="tokenSigningKey" value="${tokenSigningKey}"/>
+        <property name="refreshTokenExpTime" value="${refreshTokenExpTime}"/>
+    </bean>
+
+    <bean name="localUserDetailsService" class="com.geeksoverflow.security.jwt.service.LocalUserDetailsService"/>
+
+</beans>
