@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import com.geeksoverflow.security.jwt.database.dao.UserDAO;
 import com.geeksoverflow.security.jwt.database.model.Role;
@@ -18,6 +20,7 @@ import com.geeksoverflow.security.jwt.model.LocalUser;
  * @author <a href="mailto:sunil.pulugula@wavemaker.com">Sunil Kumar</a>
  * @since 10/5/17
  */
+@Service("userDetailsService")
 public class LocalUserDetailsService implements UserDetailsService {
 
     @Autowired

@@ -3,6 +3,8 @@ package com.geeksoverflow.security.jwt.provider;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,7 +27,9 @@ import io.jsonwebtoken.Jws;
 public class JwtAuthenticationProvider implements AuthenticationProvider {
 
     private final JwtSettings jwtSettings;
-
+    
+    private static Logger logger = LoggerFactory.getLogger(JwtAuthenticationProvider.class);
+    
     @Autowired
     public JwtAuthenticationProvider(JwtSettings jwtSettings) {
         this.jwtSettings = jwtSettings;
@@ -34,7 +38,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         RawAccessJwtToken rawAccessToken = (RawAccessJwtToken) authentication.getCredentials();
-
+		logger.info("rawAccessToken :"+rawAccessToken);
         Jws<Claims> jwsClaims = rawAccessToken.parseClaims(jwtSettings.getTokenSigningKey());
         String subject = jwsClaims.getBody().getSubject();
         List<String> scopes = jwsClaims.getBody().get("scopes", List.class);

@@ -1,18 +1,29 @@
 package com.geeksoverflow.security.jwt.handler;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicHeader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.WebAttributes;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
@@ -29,6 +40,8 @@ public class AjaxAwareAuthenticationSuccessHandler implements AuthenticationSucc
 
     private final ObjectMapper mapper;
     private final JwtTokenFactory tokenFactory;
+    
+    private static Logger logger = LoggerFactory.getLogger(AjaxAwareAuthenticationSuccessHandler.class);
 
     @Autowired
     public AjaxAwareAuthenticationSuccessHandler(final ObjectMapper mapper, final JwtTokenFactory tokenFactory) {
@@ -39,20 +52,46 @@ public class AjaxAwareAuthenticationSuccessHandler implements AuthenticationSucc
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
-        UserContext userContext = (UserContext) authentication.getPrincipal();
+    	User details = (User) authentication.getPrincipal();
+logger.info("getUsername:"+details.getUsername());
+logger.info("getAuthorities:"+details.getAuthorities());
 
+		List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>();
+		authorities.addAll(details.getAuthorities());
+
+		UserContext userContext = UserContext.create(details.getUsername(), authorities);
+logger.info("userContext"+userContext);
         JwtToken accessToken = tokenFactory.createAccessJwtToken(userContext);
+logger.info("accessToken"+accessToken);
         JwtToken refreshToken = tokenFactory.createRefreshToken(userContext);
-
+logger.info("refreshToken"+refreshToken);
         Map<String, String> tokenMap = new HashMap<String, String>();
         tokenMap.put("token", accessToken.getToken());
         tokenMap.put("refreshToken", refreshToken.getToken());
 
-        response.setStatus(HttpStatus.OK.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        mapper.writeValue(response.getWriter(), tokenMap);
+        response.setStatus(HttpStatus.FOUND.value());
+
+        Cookie cookie = new Cookie("jwt-token", accessToken.getToken());
+        response.addCookie(cookie);
+//        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+//        mapper.writeValue(response.getWriter(), tokenMap);
 
         clearAuthenticationAttributes(request);
+
+        String url = java.net.URLDecoder.decode(request.getHeader("referer"),"UTF-8");
+        
+        if(url.contains("service=")) url = url.substring(url.indexOf("service=")+8);
+        logger.info("redirection url before:"+url);
+        if(url.contains("j_spring_cas_security_check")) url = url.substring(0, url.indexOf("/j_spring_cas_security_check"));
+        logger.info("redirection url :"+url);
+
+//        Header header = new BasicHeader("X-Authorization", "Bearer "+accessToken.getToken());
+//        List<Header> headers = new ArrayList<Header>();
+//        headers.add(header);
+//        HttpClient client = HttpClients.custom().setDefaultHeaders(headers).build();
+        
+        response.addHeader("X-Authorization", "Bearer "+accessToken.getToken());
+        response.sendRedirect(url);
     }
 
     /**
