@@ -1,8 +1,12 @@
 package com.geeksoverflow.security.jwt.token;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.stereotype.Component;
+
+import com.geeksoverflow.security.jwt.provider.SkipPathRequestMatcher;
 
 /**
  * An implementation of {@link TokenExtractor} extracts token from
@@ -15,9 +19,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtHeaderTokenExtractor implements TokenExtractor {
     public static String HEADER_PREFIX = "Bearer ";
-
+    private static Logger logger = LoggerFactory.getLogger(JwtHeaderTokenExtractor.class);
     @Override
     public String extract(String header) {
+logger.info("header ="+header);
         if (StringUtils.isBlank(header)) {
             throw new AuthenticationServiceException("Authorization header cannot be blank!");
         }

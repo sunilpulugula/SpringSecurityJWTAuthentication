@@ -1,6 +1,8 @@
 package com.geeksoverflow.security.jwt.filter;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -19,6 +21,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import com.geeksoverflow.security.jwt.token.JwtAuthenticationToken;
@@ -35,15 +38,18 @@ public class JwtTokenAuthenticationProcessingFilter extends AbstractAuthenticati
 
     private final AuthenticationFailureHandler failureHandler;
     private final TokenExtractor tokenExtractor;
+    private final AuthenticationSuccessHandler successHandler;
     
     private static Logger logger = LoggerFactory.getLogger(JwtTokenAuthenticationProcessingFilter.class);
 
     @Autowired
-    public JwtTokenAuthenticationProcessingFilter(AuthenticationFailureHandler failureHandler,
-                                                  TokenExtractor tokenExtractor, RequestMatcher matcher) {
+    public JwtTokenAuthenticationProcessingFilter(	AuthenticationSuccessHandler successHandler,
+    												AuthenticationFailureHandler failureHandler,
+    												TokenExtractor tokenExtractor, RequestMatcher matcher) {
         super(matcher);
         this.failureHandler = failureHandler;
         this.tokenExtractor = tokenExtractor;
+        this.successHandler = successHandler;
     }
 
     @Override
@@ -52,7 +58,9 @@ public class JwtTokenAuthenticationProcessingFilter extends AbstractAuthenticati
     	logger.info("attemptAuthentication");
 
         String tokenPayload = request.getHeader("X-Authorization");
-        
+
+        logger.info("tokenPayload from header::"+tokenPayload);
+
         if(tokenPayload == null || tokenPayload.length() == 0) {
         	Cookie[] cookies = request.getCookies();
         	
@@ -67,12 +75,21 @@ public class JwtTokenAuthenticationProcessingFilter extends AbstractAuthenticati
 
         }
         
+        logger.info("URL"+request.getHeader("Referer"));
+        
+        if( (tokenPayload == null || tokenPayload.length() == 0) && (request.getHeader("Referer") !=null && request.getHeader("Referer").contains("jwt-token="))) {
+        	tokenPayload = "Bearer "+request.getHeader("Referer").substring(request.getHeader("Referer").indexOf("jwt-token=")+10);
+        }
+        
         logger.info("jwt-token ::"+tokenPayload);
 
         if(tokenPayload == null || tokenPayload.length() == 0) {
-        	redirectToLoginApp(response);
+        	redirectToLoginApp(request, response);
         	return null;
         }
+
+        Cookie ck = new Cookie("jwt-token", tokenPayload.replaceAll("Bearer ", "").trim());
+        response.addCookie(ck);
 
         RawAccessJwtToken token = new RawAccessJwtToken(tokenExtractor.extract(tokenPayload));
         
@@ -80,24 +97,25 @@ public class JwtTokenAuthenticationProcessingFilter extends AbstractAuthenticati
         	Authentication authentication =  getAuthenticationManager().authenticate(new JwtAuthenticationToken(token));
         	return authentication;
         }catch(BadCredentialsException | ExpiredJwtException e) {
-        	redirectToLoginApp(response);
+        	redirectToLoginApp(request, response);
         }
 
     	return null;
     }
 
-    private void redirectToLoginApp(HttpServletResponse response) throws IOException {
-    	response.setStatus(HttpStatus.FOUND.value());
+    private void redirectToLoginApp(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        Cookie cookie = new Cookie("app-url", request.getRequestURL().toString());
+        response.addCookie(cookie);
 
-    	logger.info("redirecting to "+"https://www.wavemakeronline.com/run-2ty9qdjzpt/LoginApp/#/Main");
-
-    	response.sendRedirect("https://www.wavemakeronline.com/run-2ty9qdjzpt/LoginApp/#/Main");
+    	response.setStatus(HttpServletResponse.SC_FOUND);
+    	response.setHeader("redirectURL", "https://www.wavemakeronline.com/run-2ty9qdjzpt/LoginApp?appURL="+request.getRequestURL());
+    	logger.info("redirecting "+"https://www.wavemakeronline.com/run-2ty9qdjzpt/LoginApp/#/Main?appURL="+request.getRequestURL());
     }
 
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
                                             Authentication authResult) throws IOException, ServletException {
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
+    	SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authResult);
         SecurityContextHolder.setContext(context);
         chain.doFilter(request, response);

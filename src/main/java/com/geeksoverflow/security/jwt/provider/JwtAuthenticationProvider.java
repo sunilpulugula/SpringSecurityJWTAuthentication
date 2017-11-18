@@ -12,11 +12,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.geeksoverflow.security.jwt.factory.JwtSettings;
 import com.geeksoverflow.security.jwt.model.UserContext;
 import com.geeksoverflow.security.jwt.token.JwtAuthenticationToken;
 import com.geeksoverflow.security.jwt.token.RawAccessJwtToken;
+//import com.wavemaker.runtime.security.WMUser;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 
@@ -45,10 +48,10 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
         List<GrantedAuthority> authorities = scopes.stream()
                 .map(authority -> new SimpleGrantedAuthority(authority))
                 .collect(Collectors.toList());
-
         UserContext context = UserContext.create(subject, authorities);
 
-        return new UsernamePasswordAuthenticationToken(context.getUsername(),null,context.getAuthorities());
+        logger.info("context :"+context.getUsername());
+		return new UsernamePasswordAuthenticationToken(context.getUsername(), null,authorities);
     }
 
     @Override

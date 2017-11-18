@@ -41,7 +41,5 @@ public class AjaxAwareAuthenticationFailureHandler implements AuthenticationFail
 
         mapper.writeValue(response.getWriter(), ErrorResponse.of("Authentication failed", 10, HttpStatus.UNAUTHORIZED));
 
-
-
     }
 }

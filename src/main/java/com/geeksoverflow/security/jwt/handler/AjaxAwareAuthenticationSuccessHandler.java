@@ -53,19 +53,23 @@ public class AjaxAwareAuthenticationSuccessHandler implements AuthenticationSucc
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
     	User details = (User) authentication.getPrincipal();
-logger.info("getUsername:"+details.getUsername());
-logger.info("getAuthorities:"+details.getAuthorities());
+
+    	logger.info("getUsername:"+details.getUsername());
+    	logger.info("getAuthorities:"+details.getAuthorities());
 
 		List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>();
 		authorities.addAll(details.getAuthorities());
 
 		UserContext userContext = UserContext.create(details.getUsername(), authorities);
-logger.info("userContext"+userContext);
-        JwtToken accessToken = tokenFactory.createAccessJwtToken(userContext);
-logger.info("accessToken"+accessToken);
-        JwtToken refreshToken = tokenFactory.createRefreshToken(userContext);
-logger.info("refreshToken"+refreshToken);
-        Map<String, String> tokenMap = new HashMap<String, String>();
+		logger.info("userContext"+userContext);
+        
+		JwtToken accessToken = tokenFactory.createAccessJwtToken(userContext);
+		logger.info("accessToken"+accessToken);
+        
+		JwtToken refreshToken = tokenFactory.createRefreshToken(userContext);
+		logger.info("refreshToken"+refreshToken);
+        
+		Map<String, String> tokenMap = new HashMap<String, String>();
         tokenMap.put("token", accessToken.getToken());
         tokenMap.put("refreshToken", refreshToken.getToken());
 
@@ -73,24 +77,37 @@ logger.info("refreshToken"+refreshToken);
 
         Cookie cookie = new Cookie("jwt-token", accessToken.getToken());
         response.addCookie(cookie);
-//        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-//        mapper.writeValue(response.getWriter(), tokenMap);
 
         clearAuthenticationAttributes(request);
-
-        String url = java.net.URLDecoder.decode(request.getHeader("referer"),"UTF-8");
+        String url = ""; 
         
-        if(url.contains("service=")) url = url.substring(url.indexOf("service=")+8);
-        logger.info("redirection url before:"+url);
-        if(url.contains("j_spring_cas_security_check")) url = url.substring(0, url.indexOf("/j_spring_cas_security_check"));
-        logger.info("redirection url :"+url);
+    	Cookie[] cookies = request.getCookies();
+    	
+    	if (cookies != null) {
+    		for (Cookie ck : cookies) {
+    			if (ck.getName().equals("referrerURL")) {
+    				url  = ck.getValue();
+    				url += "?jwt-token="+accessToken.getToken();
+    				break;
+    			}
+    		}
+    	}
+    	
+    	logger.info("URL from cookie :"+url);
 
-//        Header header = new BasicHeader("X-Authorization", "Bearer "+accessToken.getToken());
-//        List<Header> headers = new ArrayList<Header>();
-//        headers.add(header);
-//        HttpClient client = HttpClients.custom().setDefaultHeaders(headers).build();
-        
-        response.addHeader("X-Authorization", "Bearer "+accessToken.getToken());
+    	if(url.length() == 0) {
+	    	url = java.net.URLDecoder.decode(request.getHeader("referer"),"UTF-8");
+	        if(url.contains("service=")) url = url.substring(url.indexOf("service=")+8);
+	        logger.info("redirection url before:"+url);
+	        if(url.contains("j_spring_cas_security_check")) url = url.substring(0, url.indexOf("/j_spring_cas_security_check"));
+    	}
+
+    	logger.info("calling redirection url :"+url);
+
+    	response.setStatus(HttpServletResponse.SC_FOUND);
+        response.setHeader("X-WM-X-Authorization", "Bearer "+accessToken.getToken());
+        response.setHeader("redirectURL",url);
+    	response.setStatus(302);
         response.sendRedirect(url);
     }
 
