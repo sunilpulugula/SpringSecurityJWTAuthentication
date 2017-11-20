@@ -105,8 +105,6 @@ public class AjaxAwareAuthenticationSuccessHandler implements AuthenticationSucc
     	logger.info("calling redirection url :"+url);
 
     	response.setStatus(HttpServletResponse.SC_FOUND);
-        response.setHeader("X-WM-X-Authorization", "Bearer "+accessToken.getToken());
-        response.setHeader("redirectURL",url);
     	response.setStatus(302);
         response.sendRedirect(url);
     }

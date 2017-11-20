@@ -11,9 +11,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
+import com.geeksoverflow.security.jwt.filter.AjaxLoginProcessingFilter;
 import com.geeksoverflow.security.jwt.filter.JwtTokenAuthenticationProcessingFilter;
 
 public class JwtEntryPoint implements AuthenticationEntryPoint{
+
+	private static Logger logger = LoggerFactory.getLogger(JwtEntryPoint.class);
 
 	@Override
 	public void commence(HttpServletRequest arg0, HttpServletResponse arg1, AuthenticationException arg2)

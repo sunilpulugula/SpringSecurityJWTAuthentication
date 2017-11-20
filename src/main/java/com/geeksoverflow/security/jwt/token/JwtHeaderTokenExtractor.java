@@ -22,7 +22,7 @@ public class JwtHeaderTokenExtractor implements TokenExtractor {
     private static Logger logger = LoggerFactory.getLogger(JwtHeaderTokenExtractor.class);
     @Override
     public String extract(String header) {
-logger.info("header ="+header);
+
         if (StringUtils.isBlank(header)) {
             throw new AuthenticationServiceException("Authorization header cannot be blank!");
         }
